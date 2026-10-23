@@ -1,5 +1,5 @@
-import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
-import {WithUUID} from 'hap-nodejs';
+import type {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
+import type {WithUUID} from 'homebridge';
 import {Unit, WorkMode} from '../data';
 import {AbstractCommand, CommandPower, Command} from '../melviewCommand';
 import {MelviewMitsubishiHomebridgePlatform} from '../platform';

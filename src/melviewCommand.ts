@@ -1,4 +1,4 @@
-import {CharacteristicValue} from 'homebridge';
+import type {CharacteristicValue} from 'homebridge';
 import {MelviewMitsubishiHomebridgePlatform} from './platform';
 import {Unit, WorkMode} from './data';
 import {toFanCode} from './fanSpeed';

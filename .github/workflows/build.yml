@@ -1,31 +1,26 @@
 name: Build and Lint
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  compatibility:
     runs-on: ubuntu-latest
-
     strategy:
+      fail-fast: false
       matrix:
-        # the Node.js versions to build on
-        node-version: [10.x, 12.x, 13.x, 14.x, 15.x]
-
+        node-version: ['22.12.0', '24.x']
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Use Node.js ${{ matrix.node-version }} 
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Lint the project
+          cache: npm
+      - name: Install locked development dependencies
+        run: npm ci
+      - name: Lint all plugin source files
         run: npm run lint
-
-      - name: Build the project
-        run: npm run build
-        env:
-          CI: true
+      - name: Test Homebridge 1 and 2 packages and source types
+        run: npm run test:compat

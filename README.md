@@ -21,6 +21,12 @@ This is a fork of [aurc/melview-mitsubishi-au-nz](https://github.com/aurc/melvie
 - Cloud commands with direct LAN delivery when the adapter is reachable.
 - Serialized writes and error reporting to HomeKit when Mitsubishi rejects a command.
 
+## Supported Homebridge versions
+
+Version 1.3.0 supports **Homebridge 1.3+ and Homebridge 2.x** on **Node.js 22.12+ within v22, or Node.js 24.x**. The package provides CommonJS and ESM entry points and imports HAP types through Homebridge's public API. Its runtime uses the HAP instance supplied by the running Homebridge version.
+
+Upgrading the plugin preserves the platform identifier and device UUIDs. Fan Mode and Dry Mode remain off by default, and fan speed stays inside the existing AC settings.
+
 ## Install this fork
 
 Install from this repository to get these changes:
@@ -95,7 +101,7 @@ The plugin uses the AU/NZ Melview service used by the Mitsubishi Wi-Fi Control a
 | MSZ-GL35VGD | MAC-568IF-E | Reported by the original project. |
 | MSZ-AP25VGD | MAC-568IF-E | Reported by the original project. |
 
-The live integration was checked with Homebridge 1.11.4. Offline tests also pass against the original repository's locked Homebridge 1.3.1 / HAP-NodeJS 0.9.2 dependencies.
+Live AC integration was checked with Homebridge 1.11.4. The source types and installed package are regression-tested against Homebridge **1.3.1, 1.11.4, 2.0.0 and 2.4.0**. Homebridge 2 checks are offline; the running AC installation was not upgraded for these tests.
 
 ## Fan-speed mapping
 
@@ -118,17 +124,20 @@ The mapping follows Mitsubishi Wi-Fi Control's [`fanStageInfo` table](https://ap
 
 ## Development
 
-Use Node.js 18 or newer for the test runner; development checks were run with Node.js 22.
+Use Node.js 22.12+ within v22, or Node.js 24.x. Development dependencies target Homebridge 2; the compatibility matrix checks Homebridge 1 as well.
 
 ```sh
 npm ci
 npm run lint
 npm test
+npm run test:compat
 ```
 
-`npm test` builds the TypeScript source and runs nine offline regression tests using the real HAP library. They cover fan-stage mappings, the original speed-control layout, mode switching, default-off config, cached service removal and restoration, status synchronization, and failed/serialized writes. They require no credentials and send no air-conditioner commands.
+`npm test` builds the TypeScript source and runs eleven offline regression tests using the real HAP library. They cover fan-stage mappings, the original speed-control layout, mode switching, default-off config, cached service removal and restoration, status synchronization, and failed/serialized writes. The additional loader tests exercise both module entry points and the real Homebridge plugin loader, accessory registration and cache restoration. They require no credentials and send no air-conditioner commands.
 
-`npm run build` generates `dist`. The package includes the compiled runtime; source code and development tests remain in the Git repository.
+`npm run test:compat` installs the packed plugin in temporary fixtures for all four Homebridge versions, type-checks the source against each version, and runs all eleven tests. CI runs the matrix on Node.js 22.12.0 and 24.x. You can check one version with `npm run test:compat -- 1.11.4`. The fixtures are removed afterward.
+
+`npm run build` generates `dist`, including a CommonJS initializer and an ESM wrapper. The package includes the compiled runtime; source code and development tests remain in the Git repository.
 
 ## Credits and support
 

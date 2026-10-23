@@ -1,4 +1,4 @@
-import {API, Logger, PlatformConfig} from 'homebridge';
+import type {API, Logger, PlatformConfig} from 'homebridge';
 import fetch, {Response} from 'node-fetch';
 import {Cookie} from 'tough-cookie';
 import {Account, Building, Capabilities, CommandResponse, State} from './data';
@@ -12,205 +12,205 @@ const COMMAND_SERVICE = 'unitcommand.aspx';
 const CAPABILITIES_SERVICE = 'unitcapabilities.aspx';
 
 export class MelviewService {
-    private auth?: Cookie;
-    public pendingCommands = 0;
-    public commandRevision = 0;
-    private commandQueue: Promise<unknown> = Promise.resolve();
+  private auth?: Cookie;
+  public pendingCommands = 0;
+  public commandRevision = 0;
+  private commandQueue: Promise<unknown> = Promise.resolve();
 
-    constructor(
+  constructor(
         public readonly log: Logger,
         public readonly config: PlatformConfig,
         public readonly api: API,
-    ) {
-      this.log.debug('Service Instantiated!');
-    }
+  ) {
+    this.log.debug('Service Instantiated!');
+  }
 
-    /**
+  /**
      * Login to Melview API system.
      */
-    public async login(): Promise<Account> {
-      const response = await fetch(URL + AUTH_SERVICE, {
-        method: 'POST',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: JSON.stringify({
-          user: this.config.user,
-          pass: this.config.password,
-          appversion: APP_VERSION,
-        }),
-      });
+  public async login(): Promise<Account> {
+    const response = await fetch(URL + AUTH_SERVICE, {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: JSON.stringify({
+        user: this.config.user,
+        pass: this.config.password,
+        appversion: APP_VERSION,
+      }),
+    });
 
-      if (!response || response.status !== 200) {
-        throw new Error ('Failed to login - check the network.');
-      }
-
-      try {
-        this.extractCookie(response);
-      } catch (e) {
-        this.log.debug(e);
-        throw new Error ('Failed parse response from Melview - check the network.');
-      }
-      if (!this.auth?.value) {
-        throw new Error('Unable to get auth token from MelView. You may need to reset your password with Mitsubishi');
-      }
-
-      const body = await response.text();
-      return JSON.parse(body) as Account;
+    if (!response || response.status !== 200) {
+      throw new Error ('Failed to login - check the network.');
     }
 
-    /**
+    try {
+      this.extractCookie(response);
+    } catch (e) {
+      this.log.debug(e);
+      throw new Error ('Failed parse response from Melview - check the network.');
+    }
+    if (!this.auth?.value) {
+      throw new Error('Unable to get auth token from MelView. You may need to reset your password with Mitsubishi');
+    }
+
+    const body = await response.text();
+    return JSON.parse(body) as Account;
+  }
+
+  /**
      * Queries the entire inventory of accessories listed in Melview for the account.
      */
-    public async discover(): Promise<Building[] | undefined> {
-      if (!this.auth) {
-        return;
-      }
-
-      if (this.authWillExpire()) {
-        await this.login();
-      }
-
-      const response = await fetch(URL + ROOMS_SERVICE, {
-        method: 'POST',
-        headers: this.populateHeaders(),
-      });
-      const body = await response.text();
-      const buildings = JSON.parse(body) as Building[];
-      return buildings;
+  public async discover(): Promise<Building[] | undefined> {
+    if (!this.auth) {
+      return;
     }
 
-    /**
+    if (this.authWillExpire()) {
+      await this.login();
+    }
+
+    const response = await fetch(URL + ROOMS_SERVICE, {
+      method: 'POST',
+      headers: this.populateHeaders(),
+    });
+    const body = await response.text();
+    const buildings = JSON.parse(body) as Building[];
+    return buildings;
+  }
+
+  /**
      * Query the capabilities of a given device.
      * @param unitID is the unit identifier
      */
-    public async capabilities(unitID: string): Promise<Capabilities> {
-      if (this.authWillExpire()) {
-        await this.login();
-      }
-
-      const response = await fetch(URL + CAPABILITIES_SERVICE, {
-        method: 'POST',
-        headers: this.populateHeaders(),
-        body: JSON.stringify({
-          unitid: unitID,
-        }),
-      });
-      const body = await response.text();
-      return JSON.parse(body) as Capabilities;
+  public async capabilities(unitID: string): Promise<Capabilities> {
+    if (this.authWillExpire()) {
+      await this.login();
     }
 
-    /**
+    const response = await fetch(URL + CAPABILITIES_SERVICE, {
+      method: 'POST',
+      headers: this.populateHeaders(),
+      body: JSON.stringify({
+        unitid: unitID,
+      }),
+    });
+    const body = await response.text();
+    return JSON.parse(body) as Capabilities;
+  }
+
+  /**
      * Issue a command to the melview platform.
      * @param unitID is the unit identifier
      * @param command is the command to be executed.
      * @param commandChain any additional commands to be executed in chain.
      */
-    async command(command: Command, ...commandChain: Command[]) {
-      this.pendingCommands = (this.pendingCommands || 0) + 1;
-      this.commandRevision = (this.commandRevision || 0) + 1;
-      const task = (this.commandQueue || Promise.resolve()).then(() => this.executeCommand(command, ...commandChain));
-      this.commandQueue = task.catch(() => undefined);
-      try {
-        return await task;
-      } finally {
-        this.pendingCommands--;
-      }
+  async command(command: Command, ...commandChain: Command[]) {
+    this.pendingCommands = (this.pendingCommands || 0) + 1;
+    this.commandRevision = (this.commandRevision || 0) + 1;
+    const task = (this.commandQueue || Promise.resolve()).then(() => this.executeCommand(command, ...commandChain));
+    this.commandQueue = task.catch(() => undefined);
+    try {
+      return await task;
+    } finally {
+      this.pendingCommands--;
     }
+  }
 
-    private async executeCommand(command: Command, ...commandChain: Command[]) {
-      const device = command.device;
-      const before = { ...device.state! };
-      try {
-        if (this.authWillExpire()) {
-          await this.login();
-        }
-        const allComms = [command, ...commandChain].map(c => c.execute()).join(',');
-        const req = JSON.stringify({ unitid: command.getUnitID(), v: 2, commands: allComms, lc: 1 });
-        this.log.debug('cmd:', req);
-        const response = await fetch(URL + COMMAND_SERVICE, {
-          method: 'POST', headers: this.populateHeaders(), body: req, timeout: 10000,
-        });
-        if (!response.ok) {
-          throw new Error('Mitsubishi HTTP ' + response.status);
-        }
-        const result = await response.json() as CommandResponse;
-        if (result.error !== 'ok') {
-          throw new Error('Mitsubishi command rejected: ' + result.error);
-        }
-        if (result.lc) {
-          try {
-            const local = await fetch(command.getLocalCommandURL(), {
-              method: 'POST', body: command.getLocalCommandBody(result.lc), timeout: 2000,
-            });
-            if (!local.ok) {
-              throw new Error('LAN HTTP ' + local.status);
-            }
-            await local.text();
-          } catch (error) {
-            this.log.warn('LAN delivery unavailable; command accepted by Mitsubishi cloud:', (error as Error).message);
-          }
-        }
-        return result;
-      } catch (error) {
-        device.state = before;
-        throw error;
-      }
-    }
-
-    /**
-     * Get the current state of the unit.
-     * @param unitID is the unit identifier
-     */
-    public async getStatus(unitID: string): Promise<State> {
+  private async executeCommand(command: Command, ...commandChain: Command[]) {
+    const device = command.device;
+    const before = { ...device.state! };
+    try {
       if (this.authWillExpire()) {
         await this.login();
       }
-
+      const allComms = [command, ...commandChain].map(c => c.execute()).join(',');
+      const req = JSON.stringify({ unitid: command.getUnitID(), v: 2, commands: allComms, lc: 1 });
+      this.log.debug('cmd:', req);
       const response = await fetch(URL + COMMAND_SERVICE, {
-        method: 'POST',
-        headers: this.populateHeaders(),
-        body: JSON.stringify({
-          unitid: unitID,
-        }),
+        method: 'POST', headers: this.populateHeaders(), body: req, timeout: 10000,
       });
-      const body = await response.text();
-      return JSON.parse(body) as State;
-    }
-
-    private extractCookie(response: Response) {
-      const raw = JSON.stringify(response.headers.raw()['set-cookie']);
-      this.auth = Cookie.parse(raw) as Cookie;
-    }
-
-    // private async debugResponse(method: string, response: Response): Promise<string> {
-    //   // this.log.debug(method, 'HEADERS:--------------------------------------\n',
-    //   //   JSON.stringify(response.headers.raw()));
-    //   const body = await response.text();
-    //   // this.log.debug(method, 'BODY:--------------------------------------\n',
-    //   //   body);
-    //   return body;
-    // }
-
-    private populateHeaders() {
-      return {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0',
-        'Content-Type': 'application/json',
-        'cookie': 'auth=' + this.auth!.value,
-      };
-    }
-
-    public authWillExpire(): boolean {
-      if (this.auth) {
+      if (!response.ok) {
+        throw new Error('Mitsubishi HTTP ' + response.status);
+      }
+      const result = await response.json() as CommandResponse;
+      if (result.error !== 'ok') {
+        throw new Error('Mitsubishi command rejected: ' + result.error);
+      }
+      if (result.lc) {
         try {
-          const time = this.auth!.expiryTime(Date.now());
-          return (time / (1000 * 60 * 60)) <= 0.0;
-        } catch (e) {
-          this.log.error(e);
-          return true;
+          const local = await fetch(command.getLocalCommandURL(), {
+            method: 'POST', body: command.getLocalCommandBody(result.lc), timeout: 2000,
+          });
+          if (!local.ok) {
+            throw new Error('LAN HTTP ' + local.status);
+          }
+          await local.text();
+        } catch (error) {
+          this.log.warn('LAN delivery unavailable; command accepted by Mitsubishi cloud:', (error as Error).message);
         }
       }
-      return true;
+      return result;
+    } catch (error) {
+      device.state = before;
+      throw error;
     }
+  }
+
+  /**
+     * Get the current state of the unit.
+     * @param unitID is the unit identifier
+     */
+  public async getStatus(unitID: string): Promise<State> {
+    if (this.authWillExpire()) {
+      await this.login();
+    }
+
+    const response = await fetch(URL + COMMAND_SERVICE, {
+      method: 'POST',
+      headers: this.populateHeaders(),
+      body: JSON.stringify({
+        unitid: unitID,
+      }),
+    });
+    const body = await response.text();
+    return JSON.parse(body) as State;
+  }
+
+  private extractCookie(response: Response) {
+    const raw = JSON.stringify(response.headers.raw()['set-cookie']);
+    this.auth = Cookie.parse(raw) as Cookie;
+  }
+
+  // private async debugResponse(method: string, response: Response): Promise<string> {
+  //   // this.log.debug(method, 'HEADERS:--------------------------------------\n',
+  //   //   JSON.stringify(response.headers.raw()));
+  //   const body = await response.text();
+  //   // this.log.debug(method, 'BODY:--------------------------------------\n',
+  //   //   body);
+  //   return body;
+  // }
+
+  private populateHeaders() {
+    return {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:54.0) Gecko/20100101 Firefox/54.0',
+      'Content-Type': 'application/json',
+      'cookie': 'auth=' + this.auth!.value,
+    };
+  }
+
+  public authWillExpire(): boolean {
+    if (this.auth) {
+      try {
+        const time = this.auth!.expiryTime(Date.now());
+        return (time / (1000 * 60 * 60)) <= 0.0;
+      } catch (e) {
+        this.log.error(e);
+        return true;
+      }
+    }
+    return true;
+  }
 }

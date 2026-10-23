@@ -1,4 +1,4 @@
-import {PlatformAccessory} from 'homebridge';
+import type {PlatformAccessory} from 'homebridge';
 
 import {MelviewMitsubishiHomebridgePlatform} from './platform';
 import {Unit} from './data';
@@ -11,13 +11,13 @@ import {HomeKitControls} from './services/homekitControls';
  * Each accessory may expose multiple services of different service types.
  */
 export class MelviewMitsubishiPlatformAccessory {
-    private controls: HomeKitControls;
-    private acService: HeatCoolService;
-    constructor(
+  private controls: HomeKitControls;
+  private acService: HeatCoolService;
+  constructor(
         private readonly platform: MelviewMitsubishiHomebridgePlatform,
         private readonly accessory: PlatformAccessory,
-    ) {
-      const device: Unit = accessory.context.device;
+  ) {
+    const device: Unit = accessory.context.device;
         // set accessory information
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
           .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Mitsubishi Electric')
@@ -67,5 +67,5 @@ export class MelviewMitsubishiPlatformAccessory {
               this.platform.log.debug(e);
             });
         }, 5000);
-    }
+  }
 }

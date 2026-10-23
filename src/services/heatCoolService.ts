@@ -1,5 +1,5 @@
-import {MelviewMitsubishiHomebridgePlatform} from '../platform';
-import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
+import type {MelviewMitsubishiHomebridgePlatform} from '../platform';
+import type {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 import {WorkMode} from '../data';
 import {AbstractService} from './abstractService';
 import {
@@ -9,7 +9,6 @@ import {
   CommandTargetHeaterCoolerState,
   CommandTemperature,
 } from '../melviewCommand';
-import {WithUUID} from 'hap-nodejs';
 import {toPercentage} from '../fanSpeed';
 
 export class HeatCoolService extends AbstractService {
@@ -48,8 +47,8 @@ export class HeatCoolService extends AbstractService {
     this.service.getCharacteristic(this.characterisitc.HeatingThresholdTemperature).props.minStep = 0.5;
   }
 
-  protected getServiceType<T extends WithUUID<typeof Service>>() : T {
-    return this.platform.Service.HeaterCooler as T;
+  protected getServiceType(): typeof Service.HeaterCooler {
+    return this.platform.Service.HeaterCooler;
   }
 
   protected getDeviceRoom(): string {
@@ -87,6 +86,7 @@ export class HeatCoolService extends AbstractService {
   }
 
   async setCoolingThresholdTemperature(value: CharacteristicValue) {
+    value = Number(value);
     this.platform.log.debug('setCoolingThresholdTemperature ->', value);
     const minVal = this.service.getCharacteristic(this.characterisitc.CoolingThresholdTemperature).props.minValue!;
     const maxVal = this.service.getCharacteristic(this.characterisitc.CoolingThresholdTemperature).props.maxValue!;
@@ -114,6 +114,7 @@ export class HeatCoolService extends AbstractService {
   }
 
   async setHeatingThresholdTemperature(value: CharacteristicValue) {
+    value = Number(value);
     this.platform.log.debug('setHeatingThresholdTemperature:', value);
     const minVal = this.service.getCharacteristic(this.characterisitc.HeatingThresholdTemperature).props.minValue!;
     const maxVal = this.service.getCharacteristic(this.characterisitc.HeatingThresholdTemperature).props.maxValue!;

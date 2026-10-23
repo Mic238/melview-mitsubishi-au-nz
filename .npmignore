@@ -134,3 +134,6 @@ web_modules/
 .pnp.*
 # Offline development tests
 test
+
+# Compatibility test runner is for source checkouts
+scripts/test-compat.cjs
