@@ -13,6 +13,9 @@ const CAPABILITIES_SERVICE = 'unitcapabilities.aspx';
 
 export class MelviewService {
     private auth?: Cookie;
+    public pendingCommands = 0;
+    public commandRevision = 0;
+    private commandQueue: Promise<unknown> = Promise.resolve();
 
     constructor(
         public readonly log: Logger,
@@ -66,10 +69,7 @@ export class MelviewService {
       }
 
       if (this.authWillExpire()) {
-        this.login().catch(e => {
-          this.log.error(e);
-          return;
-        });
+        await this.login();
       }
 
       const response = await fetch(URL + ROOMS_SERVICE, {
@@ -87,10 +87,7 @@ export class MelviewService {
      */
     public async capabilities(unitID: string): Promise<Capabilities> {
       if (this.authWillExpire()) {
-        this.login().catch(e => {
-          this.log.error(e);
-          return;
-        });
+        await this.login();
       }
 
       const response = await fetch(URL + CAPABILITIES_SERVICE, {
@@ -110,41 +107,55 @@ export class MelviewService {
      * @param command is the command to be executed.
      * @param commandChain any additional commands to be executed in chain.
      */
-    public async command(command : Command, ...commandChain: Command[]) {
-      const allComms = [command, ...commandChain].map(c => c.execute()).join(',');
-      if (this.authWillExpire()) {
-        this.login().catch(e => {
-          this.log.error(e);
-          return;
-        });
+    async command(command: Command, ...commandChain: Command[]) {
+      this.pendingCommands = (this.pendingCommands || 0) + 1;
+      this.commandRevision = (this.commandRevision || 0) + 1;
+      const task = (this.commandQueue || Promise.resolve()).then(() => this.executeCommand(command, ...commandChain));
+      this.commandQueue = task.catch(() => undefined);
+      try {
+        return await task;
+      } finally {
+        this.pendingCommands--;
       }
+    }
 
-      const req = JSON.stringify({
-        unitid: command.getUnitID(),
-        v: 2,
-        commands: allComms,
-        lc: 1,
-      });
-      this.log.debug('cmd:', req);
-      const response = await fetch(URL + COMMAND_SERVICE, {
-        method: 'POST',
-        headers: this.populateHeaders(),
-        body: req,
-      });
-      const body = await response.text();
-      const rBody = JSON.parse(body) as CommandResponse;
-      if (rBody.error === 'ok' && rBody.lc && rBody.lc.length > 0) {
-        const xmlBody = command.getLocalCommandBody(rBody.lc);
-        fetch(command.getLocalCommandURL(), {
-          method: 'POST',
-          body: xmlBody,
-        }).then(r =>{
-          r.text().then(v => {
-            this.log.debug('Successfully processed local request:', v);
-          }).finally();
-        }).catch(e => {
-          this.log.warn('Unable to access unit via direct LAN interface.', e);
-        }).finally();
+    private async executeCommand(command: Command, ...commandChain: Command[]) {
+      const device = command.device;
+      const before = { ...device.state! };
+      try {
+        if (this.authWillExpire()) {
+          await this.login();
+        }
+        const allComms = [command, ...commandChain].map(c => c.execute()).join(',');
+        const req = JSON.stringify({ unitid: command.getUnitID(), v: 2, commands: allComms, lc: 1 });
+        this.log.debug('cmd:', req);
+        const response = await fetch(URL + COMMAND_SERVICE, {
+          method: 'POST', headers: this.populateHeaders(), body: req, timeout: 10000,
+        });
+        if (!response.ok) {
+          throw new Error('Mitsubishi HTTP ' + response.status);
+        }
+        const result = await response.json() as CommandResponse;
+        if (result.error !== 'ok') {
+          throw new Error('Mitsubishi command rejected: ' + result.error);
+        }
+        if (result.lc) {
+          try {
+            const local = await fetch(command.getLocalCommandURL(), {
+              method: 'POST', body: command.getLocalCommandBody(result.lc), timeout: 2000,
+            });
+            if (!local.ok) {
+              throw new Error('LAN HTTP ' + local.status);
+            }
+            await local.text();
+          } catch (error) {
+            this.log.warn('LAN delivery unavailable; command accepted by Mitsubishi cloud:', (error as Error).message);
+          }
+        }
+        return result;
+      } catch (error) {
+        device.state = before;
+        throw error;
       }
     }
 
@@ -154,10 +165,7 @@ export class MelviewService {
      */
     public async getStatus(unitID: string): Promise<State> {
       if (this.authWillExpire()) {
-        this.login().catch(e => {
-          this.log.error(e);
-          return;
-        });
+        await this.login();
       }
 
       const response = await fetch(URL + COMMAND_SERVICE, {

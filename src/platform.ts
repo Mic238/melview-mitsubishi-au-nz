@@ -88,6 +88,7 @@ export class MelviewMitsubishiHomebridgePlatform implements DynamicPlatformPlugi
               this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
 
               const s = await this.melviewService!.getStatus(device.unitid);
+              existingAccessory.context.device.capabilities = await this.melviewService!.capabilities(device.unitid);
               existingAccessory.context.device.state = s;
               new MelviewMitsubishiPlatformAccessory(this, existingAccessory);
 

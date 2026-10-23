@@ -3,7 +3,7 @@ import {PlatformAccessory} from 'homebridge';
 import {MelviewMitsubishiHomebridgePlatform} from './platform';
 import {Unit} from './data';
 import {HeatCoolService} from './services/heatCoolService';
-import {DryService} from './services/dryService';
+import {HomeKitControls} from './services/homekitControls';
 
 /**
  * Platform Accessory
@@ -11,7 +11,7 @@ import {DryService} from './services/dryService';
  * Each accessory may expose multiple services of different service types.
  */
 export class MelviewMitsubishiPlatformAccessory {
-    private dryService?: DryService;
+    private controls: HomeKitControls;
     private acService: HeatCoolService;
     constructor(
         private readonly platform: MelviewMitsubishiHomebridgePlatform,
@@ -35,27 +35,32 @@ export class MelviewMitsubishiPlatformAccessory {
          * Dehumidifier Capability
          * https://developers.homebridge.io/#/service/HumidifierDehumidifier
          *********************************************************/
-        if (accessory.context.dry) {
-          if (device.capabilities?.hasdrymode === 1) {
-            this.dryService = new DryService(this.platform, this.accessory);
-            this.platform.log.info('DRY Capability:', device.room, ' [COMPLETED]');
-          } else {
-            this.platform.log.info('DRY Capability:', device.room, ' [UNAVAILABLE]');
-          }
-        }
-
+        this.controls = new HomeKitControls(this.platform, this.accessory, this.acService);
+        this.accessory.context.dry = this.platform.config.dry === true;
 
         /*********************************************************
          * Polling for state change
          *********************************************************/
 
         setInterval(() => {
+          const service = this.platform.melviewService;
+          if (!service || service.pendingCommands) {
+            return;
+          }
+          const revision = service.commandRevision;
           this.platform.melviewService?.getStatus(
             this.accessory.context.device.unitid)
-            .then(s => {
+            .then(async s => {
               // this.platform.log.debug('Updating Accessory State:',
               //   this.accessory.context.device.unitid);
+              if (service.pendingCommands || revision !== service.commandRevision) {
+                return;
+              }
+              if (s.error !== 'ok') {
+                throw new Error('Mitsubishi status error: ' + s.error);
+              }
               this.accessory.context.device.state = s;
+              await this.controls.sync();
             })
             .catch(e => {
               this.platform.log.error('Unable to find accessory status. Check the network');

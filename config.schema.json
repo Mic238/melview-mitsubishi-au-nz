@@ -19,10 +19,16 @@
         "description": "Password used on your Mitsubishi Wi-Fi Control app"
       },
       "dry": {
-        "title": "Enable Dry Mode (experimental)",
+        "title": "Expose Dry Mode",
         "type": "boolean",
         "default": false,
-        "description": "Dry mode is still in development and is subject to bugs."
+        "description": "Show a Dry Mode switch in HomeKit when the unit supports drying. Restart the Mitsubishi bridge after changing this setting."
+      },
+      "fan": {
+        "title": "Expose Fan Mode",
+        "type": "boolean",
+        "default": false,
+        "description": "Show a Fan Mode switch in HomeKit. Restart the Mitsubishi bridge after changing this setting."
       }
     }
   }
