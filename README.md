@@ -1,116 +1,107 @@
-
 <p align="center">
-
-<img src="https://github.com/Mic238/melview-mitsubishi-au-nz/raw/master/assets/Logo.png">
-
+  <img src="assets/Logo.png" alt="Mitsubishi Homebridge plugin">
 </p>
 
-# Homebridge Melview AU/NZ Airconditioners
+# Mitsubishi Electric AU/NZ Homebridge plugin
 
-Fork of [aurc/melview-mitsubishi-au-nz](https://github.com/aurc/melview-mitsubishi-au-nz) with optional Fan/Dry switches and capability-based fan speeds.
+Control Mitsubishi Electric air conditioners registered in the AU/NZ **Mitsubishi Wi-Fi Control** app through Apple Home and Siri.
 
+This is a fork of [aurc/melview-mitsubishi-au-nz](https://github.com/aurc/melview-mitsubishi-au-nz). It adds optional Fan Mode and Dry Mode switches, fixes the dry-mode configuration bug, and maps fan speeds to each unit's supported stages.
 
-[![npm](https://img.shields.io/npm/v/homebridge-airconditioner-mitsubishi-au-nz/latest?label=latest)](https://www.npmjs.com/package/homebridge-airconditioner-mitsubishi-au-nz)
-[![GitHub release](https://img.shields.io/github/release/aurc/melview-mitsubishi-au-nz.svg)](https://github.com/Mic238/melview-mitsubishi-au-nz/releases)
-[![npm](https://img.shields.io/npm/dt/homebridge-airconditioner-mitsubishi-au-nz)](https://www.npmjs.com/package/homebridge-airconditioner-mitsubishi-au-nz)
+[![Build and lint](https://github.com/Mic238/melview-mitsubishi-au-nz/actions/workflows/build.yml/badge.svg)](https://github.com/Mic238/melview-mitsubishi-au-nz/actions/workflows/build.yml)
 
-[![Github CI](https://github.com/Mic238/melview-mitsubishi-au-nz/actions/workflows/build.yml/badge.svg)](https://github.com/Mic238/melview-mitsubishi-au-nz/actions)
-[![Github CD](https://github.com/Mic238/melview-mitsubishi-au-nz/actions/workflows/release.yml/badge.svg)](https://github.com/Mic238/melview-mitsubishi-au-nz/actions)
-[![Hex.pm](https://img.shields.io/hexpm/l/plug)](https://www.apache.org/licenses/LICENSE-2.0)
+## Features
 
-Use this plugin to integrate your Mitsubishi Airconditioner appliances with Apple's HomeKit using Homebridge.
+- Automatic discovery of units linked to your Mitsubishi account.
+- Power, Auto/Heat/Cool mode, target temperature and room-temperature readings.
+- Fan speed inside the existing air conditioner's settings in Apple Home.
+- Optional **Fan Mode** and **Dry Mode** HomeKit switches, both **off by default**.
+- Fan-speed mapping based on the unit's reported capabilities, from one to five manual stages.
+- Status updates from the Mitsubishi app through a five-second poll.
+- Cloud commands with direct LAN delivery when the adapter is reachable.
+- Serialized writes and error reporting to HomeKit when Mitsubishi rejects a command.
 
-## Overview
+## Install this fork
 
-This plugin allows you to control the basic functionalities of your AC units through the home app and Siri. The features include:
-- Instant unit response - update the unit directly via LAN interface & cloud Melview.
-- Automatically find all appliances linked to your account;
-- Control power ON/OFF
-- Set mode AUTO, HEAT, COOL
-- Optional Fan Mode and Dry Mode switches, each disabled by default.
-- Capability-based fan speed adjustment inside the existing air conditioner settings.
-- Set desired temperature
-- Obtain unit status, e.g. power, mode, room temperature and desired temperature.
+Install from this repository to get these changes:
 
-This project is a hobby project and was created to address the need for a stable plugin
-in AU/NZ to control Mitsubishi Air Conditioners. It was possible due to the great
-reverse engineering effort done by these folks: [NovaGL/diy-melview](https://github.com/NovaGL/diy-melview).
-
-Also note that the [Homebridge](https://homebridge.io/) put together excellent developer
-documentation which made it possible to get up and running quickly (e.g.
-[plugin-temeplate](https://github.com/homebridge/homebridge-plugin-template))!
-
-## Compatibility & Pre-requisites
-
-It should work with most modern Mitsubishi Electric Airconditioner units that are Wi-Fi capable.
-This plugin has been developed and tested against the following products:
-| Model                                                                                              | Wi-Fi Module                                    |
-| -------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| [MSZ-GL71VGD](https://www.mitsubishielectric.com.au/assets/LEG/JG79A991H01-UM.pdf)                 | [MAC-568IF-E](https://www.mitsubishielectric.com.au/assets/LEG/MAC-568IF-E.pdf)   |
-| [MSZ-GL35VGD](https://www.mitsubishielectric.com.au/assets/LEG/JG79A991H01-UM.pdf)                 | [MAC-568IF-E](https://www.mitsubishielectric.com.au/assets/LEG/MAC-568IF-E.pdf)   |
-| [MSZ-AP25VGD](https://www.mitsubishielectric.com.au/assets/LEG/MSZ-AP-User-Manual-JG79Y333H01.pdf) | [MAC-568IF-E](https://www.mitsubishielectric.com.au/assets/LEG/MAC-568IF-E.pdf)   |
-
-In a nutshell, if you were able to install the **[Wi-Fi Control App](https://apps.apple.com/au/app/mitsubishi-wi-fi-control/id796225889#?platform=iphone)** and operate the unit, this plugin is for you!
-
-Netheless to say, you should have **[Homebridge](https://homebridge.io/)** running.
-
-## Coming Soon
-Some capabilities are not yet available and should be released soon:
-- Swing;
-
-## Known issues
-- **Dry mode**: A unit may ignore fan-speed adjustments while drying; the indoor unit remains responsible for its dry-cycle behavior.
-- **LAN access**: Still requires internet connection, as it authenticates the requests with Melview cloud. It still
-operates way faster than Alexa and Goolge home integration as it has a fast follower command locally removing
-the know lag.
-
-
-## Installation
-
-### Through Homebridge Config UI
-Install this fork using the CLI command below, then configure it with the [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x).
-1. Access the settings and configure the credentials as per the required fields.
-2. Save and restart homebridge.
-3. All units in your network should be automatically recognised. Open your Home App and allocate them to their respective rooms.
-
-### Through CLI
-
-You can install the package manually by issuing:
-````
+```sh
 npm install -g git+https://github.com/Mic238/melview-mitsubishi-au-nz.git
-````
-and configuring the plugin file `config.json` as:
-````
+```
+
+Use the Node.js installation and npm context that your Homebridge service uses. The GitHub installation builds the TypeScript source automatically. The package name remains `homebridge-airconditioner-mitsubishi-au-nz`.
+
+In Homebridge Config UI, open the plugin settings, enter your Mitsubishi Wi-Fi Control credentials, save, and restart Homebridge. Discovered units appear in Apple Home through the existing Homebridge pairing.
+
+To update this fork, run the same installation command again and restart Homebridge.
+
+## Configuration
+
+Add this platform entry to the `platforms` array in your Homebridge `config.json`, or use the plugin settings UI:
+
+```json
 {
-    "bridge": {
-        //...
-    },
-    "accessories": [],
-    "platforms": [
-        {
-            "user": "user@domain.com",
-            "password": "yourpassword",
-            "platform": "MitsubishiAUNZ",
-            "fan": false,
-            "dry": false
-        }
-    ]
+  "platform": "MitsubishiAUNZ",
+  "user": "user@example.com",
+  "password": "your-mitsubishi-password",
+  "fan": false,
+  "dry": false
 }
-````
-where **user** is your user name, typically the email you used to register with the app
-and **password** is your account password.
+```
 
-## Fan speed and optional modes
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `user` | Required | Mitsubishi Wi-Fi Control username. |
+| `password` | Required | Mitsubishi Wi-Fi Control password. |
+| `fan` / **Expose Fan Mode** | `false` | Show a switch that selects fan-only mode. |
+| `dry` / **Expose Dry Mode** | `false` | Show a switch that selects drying, when the unit supports it. |
 
-Fan speed remains on the original HeaterCooler service, inside the air conditioner's settings in Apple Home. This fork does not add a separate fan-speed tile. Speed changes preserve the current operating mode and power state.
+Apply configuration changes using the Homebridge UI's **child-bridge restart** action or a full Homebridge restart. Disabling an exposure setting removes its HomeKit switch without changing the air conditioner's physical mode or power.
 
-Enable **Expose Fan Mode** (`fan: true`) or **Expose Dry Mode** (`dry: true`) in the plugin settings to show the corresponding HomeKit switch. Both default to off. Dry Mode is offered only when the unit reports dry-mode support. Disabling either option removes its cached HomeKit switch without changing the physical unit's mode or power. Apply changes with the Homebridge UI's child-bridge restart action or a full Homebridge restart.
+Both optional mode switches remain available in the plugin config when their HomeKit exposure is off. Fan-speed adjustment remains available with either option disabled.
 
-The optional mode switches turn the unit on in the selected mode. Turning a switch off powers down only if that mode is still selected. Selecting Fan or Dry updates the other switch and the heating/cooling status. Apple's standard HeaterCooler selector supports Auto, Heat and Cool; Fan and Dry therefore use separate switches.
+## Apple Home controls
 
-The fan mapping follows Mitsubishi Wi-Fi Control's [fanStageInfo table](https://app.melview.net/js/ex.js):
+### Fan speed
 
-| Manual stages | Mitsubishi fan command values | HomeKit speeds |
+Fan speed stays on the original HeaterCooler service, inside the air conditioner's settings. There is no separate Fan Speed tile.
+
+For a two-speed unit:
+
+- **50% = Low**.
+- **100% = High**.
+
+Changing fan speed preserves the selected operating mode and power state. Intermediate percentages select a supported stage; the next status refresh reports that stage's percentage. A zero request selects automatic fan speed only on units that support it; otherwise it selects the lowest manual speed.
+
+### Optional Fan Mode and Dry Mode switches
+
+Enable either option in the plugin config to expose its switch in Apple Home.
+
+- Turning a mode switch **on** selects that mode and powers the unit on.
+- Turning it **off** powers the unit down only if that mode is still selected.
+- Selecting Fan or Dry updates the other switch and the heating/cooling status.
+- Turning the original heating/cooling control on from Fan or Dry returns to its displayed climate mode.
+
+Apple's standard HeaterCooler mode selector supports Auto, Heat and Cool. Fan and Dry use separate switches because they cannot be added to that selector. The Dry switch does not invent a humidity reading or expose a humidity target.
+
+## Compatibility and verification
+
+The plugin uses the AU/NZ Melview service used by the Mitsubishi Wi-Fi Control app. Units must be linked to that account, and Homebridge must be able to reach the Mitsubishi service. Direct LAN delivery additionally requires access to the unit's Wi-Fi adapter.
+
+| Indoor unit | Wi-Fi adapter | Verification |
+| --- | --- | --- |
+| PEA-RP140GAA | MAC-578 (`mac578`) | This fork: live Fan, Dry, Low and High commands confirmed, with original settings restored afterward. |
+| MSZ-GL71VGD | MAC-568IF-E | Reported by the original project. |
+| MSZ-GL35VGD | MAC-568IF-E | Reported by the original project. |
+| MSZ-AP25VGD | MAC-568IF-E | Reported by the original project. |
+
+The live integration was checked with Homebridge 1.11.4. Offline tests also pass against the original repository's locked Homebridge 1.3.1 / HAP-NodeJS 0.9.2 dependencies.
+
+## Fan-speed mapping
+
+The mapping follows Mitsubishi Wi-Fi Control's [`fanStageInfo` table](https://app.melview.net/js/ex.js):
+
+| Manual stages | Mitsubishi command values | HomeKit speeds |
 | --- | --- | --- |
 | 1 | 5 | 100% |
 | 2 | 2, 5 | 50%, 100% |
@@ -118,13 +109,16 @@ The fan mapping follows Mitsubishi Wi-Fi Control's [fanStageInfo table](https://
 | 4 | 2, 3, 5, 6 | 25%, 50%, 75%, 100% |
 | 5 | 1, 2, 3, 5, 6 | 20%, 40%, 60%, 80%, 100% |
 
-For a two-stage unit, 50% selects Low and 100% selects High. Zero selects automatic fan speed only when supported; otherwise it selects the lowest manual speed. Intermediate requests select a supported stage, and the polled state reports that stage's percentage.
+## Limitations
 
-Cloud writes are serialized and rejected commands report an error to HomeKit. Polls started before a write cannot overwrite its new state. Changes made in the Mitsubishi app update HomeKit on the five-second poll.
+- An internet connection is required for authentication and cloud commands, including when direct LAN delivery is available.
+- Swing controls are not implemented.
+- A unit may ignore fan-speed adjustments during its dry cycle.
+- The five-second polling interval means Mitsubishi app changes can take a few seconds to appear in Apple Home.
 
 ## Development
 
-Use Node.js 18 or newer for the test runner (validated with Node.js 22). Install the locked dependencies and run:
+Use Node.js 18 or newer for the test runner; development checks were run with Node.js 22.
 
 ```sh
 npm ci
@@ -132,9 +126,14 @@ npm run lint
 npm test
 ```
 
-`npm test` compiles TypeScript and runs nine offline regression tests using the real HAP library. The tests cover fan stages, the original speed-control layout, Fan/Dry switching, optional-service removal and restoration, default-off config, app status synchronization, and failed/serialized writes. They require no account credentials and send no air-conditioner commands.
+`npm test` builds the TypeScript source and runs nine offline regression tests using the real HAP library. They cover fan-stage mappings, the original speed-control layout, mode switching, default-off config, cached service removal and restoration, status synchronization, and failed/serialized writes. They require no credentials and send no air-conditioner commands.
 
-## Questions & Issues
-If you have issues, found a bug or have a question, please open an issue **[here](https://github.com/Mic238/melview-mitsubishi-au-nz/issues)**.
+`npm run build` generates `dist`. The package includes the compiled runtime; source code and development tests remain in the Git repository.
 
+## Credits and support
 
+Thanks to [aurc](https://github.com/aurc/melview-mitsubishi-au-nz) for the original plugin, [NovaGL/diy-melview](https://github.com/NovaGL/diy-melview) for the Melview protocol work, and [Homebridge](https://homebridge.io/) for its platform and documentation.
+
+Report issues with this fork in [Mic238/melview-mitsubishi-au-nz](https://github.com/Mic238/melview-mitsubishi-au-nz/issues).
+
+Licensed under [Apache-2.0](LICENSE).
